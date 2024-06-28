@@ -1,0 +1,37 @@
+13:08:36.557 [info] Child {LoggerFileBackend, :general_log} of Supervisor Logger.Backends.Supervisor started
+Pid: #PID<0.112.0>
+Start Call: Logger.Backends.Watcher.start_link({{LoggerFileBackend, :general_log}, {LoggerFileBackend, :general_log}})
+Restart: :transient
+Shutdown: 5000
+Type: :worker
+13:08:36.557 [info] Child Logger.Backends.Supervisor of Supervisor Logger.Backends.Internal started
+Pid: #PID<0.111.0>
+Start Call: Logger.Backends.Supervisor.start_link([{LoggerFileBackend, :general_log}])
+Restart: :permanent
+Shutdown: :infinity
+Type: :supervisor
+13:08:36.558 [info] Child Logger.Backends.Internal of Supervisor Logger.Supervisor started
+Pid: #PID<0.107.0>
+Start Call: Logger.Backends.Internal.start_link([])
+Restart: :permanent
+Shutdown: :infinity
+Type: :supervisor
+13:08:36.558 [info] Application logger started at :nonode@nohost
+13:08:38.926 [error] FATAL: Lexical is not compatible with Elixir 1.17.1
+
+Lexical is compatible with the following versions of Elixir:
+
+  >= 1.13.0
+  >= 1.14.0
+  >= 1.15.3
+  >= 1.16.0
+
+
+FATAL: Lexical is not compatible with Erlang/OTP 27.0.0
+
+Lexical is compatible with the following versions of Erlang/OTP:
+
+  >= 24.3.4
+  >= 25.0.0
+  >= 26.0.2
+

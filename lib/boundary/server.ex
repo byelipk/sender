@@ -1,4 +1,4 @@
-defmodule Sender.Server do
+defmodule Sender.Boundary.Server do
   use GenServer
 
   # Client API
