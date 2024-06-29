@@ -1,6 +1,15 @@
 defmodule Sender.Boundary.TaskServer do
   use GenServer
 
+  @initial_state %{
+    concurrency: 4,
+    q: :queue.new(),
+    tasks: %{},
+    products: %{},
+    media: %{},
+    stages: %{}
+  }
+
   # Client API
 
   def start_link(init_args) do
@@ -23,7 +32,7 @@ defmodule Sender.Boundary.TaskServer do
 
   @impl true
   def init(_init_args) do
-    {:ok, %{tasks: %{}, products: %{}, media: %{}, stages: %{}}}
+    {:ok, @initial_state}
   end
 
   @impl true
@@ -54,7 +63,7 @@ defmodule Sender.Boundary.TaskServer do
       Process.demonitor(ref, [:flush])
     end)
 
-    {:noreply, %{tasks: %{}, products: %{}, media: %{}, stages: %{}}}
+    {:noreply, @initial_state}
   end
 
   @impl true
@@ -121,7 +130,8 @@ defmodule Sender.Boundary.TaskServer do
 
       {:error, "media", "create", _} ->
         IO.puts("Media creation failed for #{handle}")
-        IO.puts("Nothing left to do.")
+        IO.puts("All done.")
+        state = put_in(state.stages[handle], :media)
 
         {:noreply, state}
 
@@ -133,7 +143,12 @@ defmodule Sender.Boundary.TaskServer do
   @impl true
   def handle_info({:DOWN, ref, _, _, reason}, state) do
     {handle, state} = pop_in(state.tasks[ref])
+
     IO.puts("Task failed for #{handle} with reason #{inspect(reason)}")
+
+    current_stage = state.stages[handle]
+    state = put_in(state.stages[handle], {current_stage, :failed, reason})
+
     {:noreply, state}
   end
 
@@ -169,35 +184,46 @@ defmodule Sender.Boundary.TaskServer do
 
   @impl true
   def handle_continue({:get_media, handle}, state) do
-    new_state =
-      create_faux_supervised_task(state, handle, fn ->
-        Process.sleep(3000)
+    %{name: name} = state.products[handle]
 
-        case :rand.uniform(2) do
-          1 ->
-            {
-              :ok,
-              "media",
-              "get",
-              %{name: "My Media", product_handle: handle}
-            }
+    case Map.fetch(state.media, handle) do
+      {:ok, _media} ->
+        IO.puts("Media already exists for #{handle}")
+        {:noreply, state}
 
-          2 ->
-            {
-              :not_found,
-              "media",
-              "get",
-              nil
-            }
-        end
-      end)
+      :error ->
+        IO.puts("Looking up media for #{handle}...")
 
-    {:noreply, new_state}
+        new_state =
+          create_faux_supervised_task(state, handle, fn ->
+            Process.sleep(3000)
+
+            case :rand.uniform(2) do
+              1 ->
+                {
+                  :ok,
+                  "media",
+                  "get",
+                  %{name: name <> ".jpg", product_handle: handle}
+                }
+
+              2 ->
+                {
+                  :not_found,
+                  "media",
+                  "get",
+                  nil
+                }
+            end
+          end)
+
+        {:noreply, new_state}
+    end
   end
 
   @impl true
   def handle_continue({:create_media, handle}, state) do
-    product = state.products[handle]
+    %{name: name} = state.products[handle]
 
     new_state =
       create_faux_supervised_task(state, handle, fn ->
@@ -205,7 +231,7 @@ defmodule Sender.Boundary.TaskServer do
 
         case :rand.uniform(2) do
           1 ->
-            {:ok, "media", "create", %{name: "My Media", product_handle: product.handle}}
+            {:ok, "media", "create", %{name: name <> ".jpg", product_handle: handle}}
 
           2 ->
             {:error, "media", "create", %{errors: ["lolz"]}}
@@ -226,7 +252,8 @@ defmodule Sender.Boundary.TaskServer do
             {:ok, "product", "create", data}
 
           2 ->
-            {:error, "product", "create", %{errors: ["lolz"]}}
+            raise "Product creation failed"
+            # {:error, "product", "create", %{errors: ["lolz"]}}
         end
       end)
 
