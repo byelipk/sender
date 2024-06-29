@@ -9,6 +9,7 @@ defmodule Sender.Application do
   def start(_type, _args) do
     children = [
       # Starts a worker by calling: Sender.Worker.start_link(arg)
+      {Sender.Boundary.Machine, []},
       {Sender.Boundary.Server, []},
       {Sender.Boundary.Counter, 0},
       {Sender.Boundary.TaskServer, [name: Sender.Boundary.TaskServer]},
