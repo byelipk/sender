@@ -49,18 +49,39 @@ defmodule Sender.Boundary.MachineTwo do
     {:noreply, %{state | value: "Running"}}
   end
 
+  def handle_cast({:transition, "Running"}, %{value: "Ponging"} = state) do
+    IO.puts("Back in action...")
+    {:noreply, %{state | value: "Running"}}
+  end
+
+  def handle_cast({:transition, "Ponging"}, %{value: "Running"} = state) do
+    IO.puts("Ponging...")
+    {:noreply, %{state | value: "Ponging"}}
+  end
+
   def handle_cast({:transition, invalid}, state) do
     IO.puts("Invalid transition: #{state.value} -> #{invalid}")
     {:noreply, state}
   end
 
   def handle_cast({:send_message, "PING"}, %{value: "Running"} = state) do
-    IO.puts("PONG :)")
+    Task.Supervisor.start_child(
+      Sender.TaskSupervisor,
+      fn ->
+        IO.puts("About to pong...")
+        Process.sleep(3000)
+        IO.puts("Fin with pong...")
+        __MODULE__.transition("Running")
+      end
+    )
+
+    transition("Ponging")
+
     {:noreply, state}
   end
 
   def handle_cast({:send_message, "PING"}, state) do
-    IO.puts("Bad call")
+    IO.puts("Bad call: #{state.value} // PING")
     {:noreply, state}
   end
 
